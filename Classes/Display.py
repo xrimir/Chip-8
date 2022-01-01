@@ -35,6 +35,7 @@ class Display:
 
             if self.display[num]:
                 pygame.draw.rect(self.screen, (255, 255, 255), pygame.Rect(x, y, self.scale, self.scale))
+        pygame.display.update()
 
     def clear(self):
         self.display = [0] * (self.ROWS * self.COLS)

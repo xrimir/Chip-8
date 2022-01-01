@@ -1,24 +1,24 @@
 import random
+import pygame
 
 
 class Chip8:
     ROWS = 32
     COLS = 64
 
-    def __init__(self, Display):
+    def __init__(self, display, keyboard):
         self.ram = [0] * 4096
         self.V = [0] * 16
         self.i = 0
-        self.VF = 0
-        self.delay_register = 0
-        self.sound_register = 0
-        self.pc = 512  # program counter
-        self.sp = -1  # stack pointer
+        self.delay_timer = 0
+        self.sound_timer = 0
+        self.pc = 512
+        self.sp = 0
         self.stack = [0] * 16
         self.scale = 15
-        self.display = [0] * (self.ROWS * self.COLS)
         self.paused = False
-        self.Display = Display
+        self.Display = display
+        self.Keyboard = keyboard
 
     def load_rom(self, filename):
         file = open(filename, "rb").read()
@@ -52,35 +52,30 @@ class Chip8:
         match op:
             case 0x0000:
                 if opcode == 0x00E0:
-                    self.display.clear()
+                    self.Display.clear()
                 elif opcode == 0x00EE:
                     self.pc = self.stack.pop()
                     self.sp -= 1
             case 0x1000:
-                nnn = (opcode & 0xFFF)
-                self.pc = nnn
+                self.pc = (opcode & 0xFFF)
             case 0x2000:
                 nnn = (opcode & 0xFFF)
                 self.sp += 1
                 self.stack.append(self.pc)
                 self.pc = nnn
             case 0x3000:
-                kk = (opcode & 0xFF)
-                if self.V[x] == kk:
+                if self.V[x] == (opcode & 0xFF):
                     self.pc += 2
             case 0x4000:
-                kk = (opcode & 0xFF)
-                if self.V[x] != kk:
+                if self.V[x] != (opcode & 0xFF):
                     self.pc += 2
             case 0x5000:
                 if self.V[x] == self.V[y]:
                     self.pc += 2
             case 0x6000:
-                kk = (opcode & 0xFF)
-                self.V[x] = kk
+                self.V[x] = (opcode & 0xFF)
             case 0x7000:
-                kk = (opcode & 0xFF)
-                self.V[x] += kk
+                self.V[x] += (opcode & 0xFF)
             case 0x8000:
                 lastNibble = (opcode & 0xF)
                 match lastNibble:
@@ -93,89 +88,103 @@ class Chip8:
                     case 0x3:
                         self.V[x] ^= self.V[y]
                     case 0x4:
-                        regSum = (self.V[x] + self.V[y])
-                        self.VF = 0
-                        if regSum > 0xFF:
-                            self.VF = 1
-                            self.V[x] = (regSum & 0xFF)
+                        self.V[x] += self.V[y]
+                        if self.V[x] > 0xFF:
+                            self.V[0xF] = 1
                         else:
-                            self.V[x] = regSum
+                            self.V[0xF] = 0
+                        self.V[x] &= 0xFF
                     case 0x5:
-                        self.VF = 0
-                        if self.V[x] > self.V[y]:
-                            self.VF = 1
+                        if self.V[x] < self.V[y]:
+                            self.V[0xF] = 0
+                        elif self.V[x] > self.V[y]:
+                            self.V[0xF] = 1
                         self.V[x] -= self.V[y]
+                        self.V[x] &= 0xFF
                     case 0x6:
-                        self.VF = (self.V[x] & 0x1)
+                        self.V[0xF] = (self.V[x] & 0x1)
                         self.V[x] >>= 1
                     case 0x7:
-                        self.VF = 0
+                        self.V[0xF] = 0
                         if self.V[y] > self.V[x]:
-                            self.VF = 1
+                            self.V[0xF] = 1
                         self.V[x] = self.V[y] - self.V[x]
                     case 0xE:
-                        self.V[x] = (self.V[x] & 0x80)
+                        self.V[0xF] = (self.V[x] & 0x80)
                         self.V[x] <<= 1
 
             case 0x9000:
                 if self.V[x] != self.V[y]:
                     self.pc += 2
             case 0xA000:
-                nnn = (opcode & 0xFFF)
-                self.i = nnn
+                self.i = (opcode & 0xFFF)
             case 0xB000:
-                nnn = (opcode & 0xFFF)
-                self.pc = nnn + self.V[0]
+                self.pc = (opcode & 0xFFF) + self.V[0]
             case 0xC000:
-                self.V[x] = random.randrange(0, 255) & (opcode & 0xFF)
+                self.V[x] = random.randint(0, 255) & (opcode & 0xFF)
             case 0xD000:
                 width = 8
                 height = (opcode & 0xF)
-                self.VF = 0
+                self.V[0xF] = 0
                 for row in range(0, height):
                     sprite = self.ram[self.i + row]
                     for col in range(0, width):
                         if sprite & 0x80 > 0:
                             if self.Display.set_pixel(self.V[x] + col, self.V[y] + row):
-                                self.VF = 1
+                                self.V[0xF] = 1
                         sprite <<= 1
 
             case 0xE000:
                 lastNibble = (opcode & 0xFF)
                 match lastNibble:
                     case 0x9E:
-                        print("skip instruction if keyt with the value of Vx is pressed")
+                        print(self.Keyboard.is_key_pressed(self.V[x]))
+                        if self.Keyboard.is_key_pressed(self.V[x]):
+                            self.pc += 2
                     case 0xA1:
-                        print("skup next intruction if key with the value of Vx is pressed")
+                        print(self.Keyboard.is_key_pressed(self.V[x]))
+                        if not self.Keyboard.is_key_pressed(self.V[x]):
+                            self.pc += 2
             case 0xF000:
                 lastNibble = (opcode & 0xFF)
                 match lastNibble:
                     case 0x07:
-                        pass
+                        self.V[x] = self.delay_timer
                     case 0x0A:
-                        pass
+                        print("waiting for input")
+                        while True:
+                            event = pygame.event.wait()
+                            if event.type == pygame.KEYDOWN:
+                                if event.key in self.Keyboard.keys.keys():
+                                    self.Keyboard.keysPressed[event.key] = 1
+                                    break
                     case 0x15:
-                        pass
+                        self.delay_timer = self.V[x]
                     case 0x18:
-                        pass
+                        self.sound_timer = self.V[x]
                     case 0x1E:
-                        pass
+                        self.i += self.V[x]
                     case 0x29:
-                        pass
+                        self.i = self.V[x] * 5
                     case 0x33:
-                        pass
+                        self.ram[self.i] = (self.V[x] // 100)
+                        self.ram[self.i + 1] = (self.V[x] % 100 // 10)
+                        self.ram[self.i + 2] = (self.V[x] % 10)
                     case 0x55:
-                        pass
+                        for num in range(x + 1):
+                            self.ram[self.i + num] = self.V[num]
                     case 0x65:
-                        pass
+                        for num in range(x + 1):
+                            self.V[num] = self.ram[self.i + num]
 
-        return hex(opcode)
-
-    def execute_opcode(self):
-        pass
+    def update_timers(self):
+        if self.delay_timer > 0:
+            self.delay_timer -= 1
+        if self.sound_timer > 0:
+            self.sound_timer -= 1
 
     def cpu_cycle(self):
-        opcode = self.ram[self.pc] << 8 | self.ram[self.pc + 1]
+        opcode = (self.ram[self.pc] << 8) | self.ram[self.pc + 1]
+        self.update_timers()
         self.pc += 2
-        decoded_opcode = self.decode_execute_opcode(opcode)
-        return True
+        self.decode_execute_opcode(opcode)

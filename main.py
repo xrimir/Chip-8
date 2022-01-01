@@ -3,22 +3,25 @@ from Classes.Display import Display
 from Classes.Keyboard import Keyboard
 import pygame
 import sys
-import time
+
 display = Display()
-chip8 = Chip8(display)
 keyboard = Keyboard()
+chip8 = Chip8(display, keyboard)
+chip8.load_sprites()
 FPS = 60
 clock = pygame.time.Clock()
-chip8.load_rom('./Roms/ibm_logo.ch8')
+chip8.load_rom('./Roms/race.ch8')
 while True:
+    chip8.cpu_cycle()
+    display.render()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit(0)
         if event.type == pygame.KEYDOWN:
-            if str(event.key) in keyboard.keys.keys():
-                print(keyboard.keys[f"{event.key}"])
-    chip8.cpu_cycle()
-    display.render()
-    pygame.display.update()
+            if event.key in keyboard.keys.keys():
+                chip8.Keyboard.keysPressed[chip8.Keyboard.keys[event.key]] = 1
+        if event.type == pygame.KEYUP:
+            if event.key in keyboard.keys.keys():
+                chip8.Keyboard.keysPressed[chip8.Keyboard.keys[event.key]] = 0
     clock.tick(FPS)
