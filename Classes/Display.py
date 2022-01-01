@@ -22,7 +22,7 @@ class Display:
             y -= self.ROWS
         elif x < 0:
             y += self.ROWS
-
+        print(x, y)
         pixelLocation = x + (y * self.COLS)
         self.display[pixelLocation] ^= 1
         return not self.display[pixelLocation]
@@ -38,4 +38,5 @@ class Display:
         pygame.display.update()
 
     def clear(self):
+        print("oh god im cleaing")
         self.display = [0] * (self.ROWS * self.COLS)

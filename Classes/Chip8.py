@@ -75,7 +75,7 @@ class Chip8:
             case 0x6000:
                 self.V[x] = (opcode & 0xFF)
             case 0x7000:
-                self.V[x] += (opcode & 0xFF)
+                self.V[x] = (self.V[x] + (opcode & 0xFF)) % 256
             case 0x8000:
                 lastNibble = (opcode & 0xF)
                 match lastNibble:

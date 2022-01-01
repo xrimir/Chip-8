@@ -8,9 +8,9 @@ display = Display()
 keyboard = Keyboard()
 chip8 = Chip8(display, keyboard)
 chip8.load_sprites()
-FPS = 60
+FPS = 260
 clock = pygame.time.Clock()
-chip8.load_rom('./Roms/race.ch8')
+chip8.load_rom('./Roms/pong.rom')
 while True:
     chip8.cpu_cycle()
     display.render()
