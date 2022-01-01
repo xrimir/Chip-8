@@ -10,7 +10,7 @@ chip8 = Chip8(display, keyboard)
 chip8.load_sprites()
 FPS = 260
 clock = pygame.time.Clock()
-chip8.load_rom('./Roms/pong.rom')
+chip8.load_rom('./Roms/brix.ch8')
 while True:
     chip8.cpu_cycle()
     display.render()
